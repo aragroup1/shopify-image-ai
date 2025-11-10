@@ -2,11 +2,10 @@ import sqlite3
 from datetime import datetime
 
 class ApprovalDB:
-# REPLACE __init__ METHOD WITH THIS:
-def __init__(self, db_path='/tmp/approvals.db'):  # Use tmp dir for Railway
-    """Use ephemeral storage compatible with Railway"""
-    self.conn = sqlite3.connect(db_path, check_same_thread=False)
-    self._init_db()
+    def __init__(self, db_path='/tmp/approvals.db'):
+        """Use ephemeral storage compatible with Railway"""
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._init_db()
     
     def _init_db(self):
         with self.conn:
