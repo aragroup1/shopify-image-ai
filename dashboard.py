@@ -4,7 +4,12 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-app = Flask(__name__)
+# REPLACE APP INITIALIZATION WITH THIS:
+app = Flask(
+    __name__,
+    static_folder='../static',  # Critical for CSS/images
+    template_folder='../templates'
+)
 db = ApprovalDB()
 
 @app.route('/login', methods=['GET', 'POST'])
