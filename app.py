@@ -13,6 +13,32 @@ load_dotenv()
 app = FastAPI()
 db = ApprovalDB()
 
+
+# ADD THIS FUNCTION BEFORE startup EVENT
+def log_directory_structure():
+    """Debug directory structure on startup"""
+    logger.info("\n" + "="*50)
+    logger.info("DIRECTORY STRUCTURE DEBUG")
+    logger.info(f"Current working directory: {os.getcwd()}")
+    logger.info(f"App directory: {os.path.dirname(os.path.abspath(__file__))}")
+    
+    # List critical directories
+    for dir_name in ['templates', 'static']:
+        path = os.path.join(os.getcwd(), dir_name)
+        exists = os.path.exists(path)
+        logger.info(f"{'✅' if exists else '❌'} {dir_name} directory: {path}")
+        if exists:
+            files = os.listdir(path)
+            logger.info(f"  Files: {', '.join(files) if files else 'EMPTY'}")
+    
+    logger.info("="*50 + "\n")
+
+@app.on_event("startup")
+async def graceful_startup():
+    log_directory_structure()  # ADD THIS LINE
+    warnings = get_startup_warnings()
+    # ... rest of existing code
+
 @app.get("/")
 async def root():
     """Redirect root to dashboard login"""
