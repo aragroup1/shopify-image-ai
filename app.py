@@ -2,6 +2,7 @@ import os
 import logging
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.middleware.wsgi import WSGIMiddleware
 from dotenv import load_dotenv
 from models import ApprovalDB
 
@@ -13,8 +14,6 @@ load_dotenv()
 app = FastAPI()
 db = ApprovalDB()
 
-
-# ADD THIS FUNCTION BEFORE startup EVENT
 def log_directory_structure():
     """Debug directory structure on startup"""
     logger.info("\n" + "="*50)
@@ -32,26 +31,6 @@ def log_directory_structure():
             logger.info(f"  Files: {', '.join(files) if files else 'EMPTY'}")
     
     logger.info("="*50 + "\n")
-
-@app.on_event("startup")
-async def graceful_startup():
-    log_directory_structure()  # ADD THIS LINE
-    warnings = get_startup_warnings()
-    # ... rest of existing code
-
-@app.get("/")
-async def root():
-    """Redirect root to dashboard login"""
-    return RedirectResponse("/dashboard/login")
-
-@app.get("/health")
-async def health_check():
-    """Railway health check - always passes"""
-    return {
-        "status": "ok",
-        "db_status": "connected" if db.conn else "disconnected",
-        "warnings": get_startup_warnings()
-    }
 
 def get_startup_warnings():
     """Collect configuration warnings without crashing"""
@@ -75,9 +54,23 @@ def get_startup_warnings():
     
     return warnings
 
+@app.get("/")
+async def root():
+    """Redirect root to dashboard login"""
+    return RedirectResponse("/dashboard/login")
+
+@app.get("/health")
+async def health_check():
+    """Railway health check - always passes"""
+    return {
+        "status": "ok",
+        "db_status": "connected" if db.conn else "disconnected",
+        "warnings": get_startup_warnings()
+    }
+
 @app.on_event("startup")
 async def graceful_startup():
-    """Start even with missing config - log warnings instead"""
+    log_directory_structure()
     warnings = get_startup_warnings()
     
     if warnings:
@@ -90,10 +83,9 @@ async def graceful_startup():
         logger.info("✅ All systems operational")
 
 # Mount Flask dashboard under /dashboard
-from fastapi.middleware.wsgi import WSGIMiddleware
 from dashboard import app as dashboard_app
-
 app.mount("/dashboard", WSGIMiddleware(dashboard_app))
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
