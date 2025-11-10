@@ -1,4 +1,5 @@
 import os
+from fastapi.responses import RedirectResponse
 from fastapi import FastAPI, BackgroundTasks
 from dotenv import load_dotenv
 from services.shopify import ShopifyService
@@ -13,6 +14,28 @@ load_dotenv()
 app = FastAPI()
 shopify = ShopifyService()
 db = ApprovalDB()
+
+@app.get("/")
+async def root():
+    """Redirect root to dashboard login"""
+    return RedirectResponse("/dashboard/login")
+
+@app.on_event("startup")
+async def validate_config():
+    """Critical startup checks"""
+    required_vars = [
+        'SHOPIFY_API_KEY', 
+        'SHOPIFY_PASSWORD',
+        'SHOPIFY_STORE_URL',
+        'REPLICATE_API_TOKEN',
+        'DASHBOARD_USER',
+        'DASHBOARD_PASS'
+    ]
+    missing = [var for var in required_vars if not os.getenv(var)]
+    if missing:
+        raise ValueError(f"MISSING ENV VARS: {', '.join(missing)} - Check Railway variables")
+
+# KEEP THE EXISTING MOUNT AND RUN CODE BELOW THIS
 
 @app.post("/webhook/product_updated")
 async def handle_product_update(payload: dict, background_tasks: BackgroundTasks):
