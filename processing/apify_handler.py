@@ -1,6 +1,11 @@
+replicate_available = bool(os.getenv('REPLICATE_API_TOKEN'))
+
 from services.replicate import ReplicateService
 
 def split_apify_image(image_url):
+    if not replicate_available:
+        logger.warning("Skipping Apify split - Replicate token missing")
+        return [image_url]  # Return original image
     """Split composite image into multiple angles using SAM"""
     replicate = ReplicateService()
     try:
