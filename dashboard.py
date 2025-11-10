@@ -11,12 +11,19 @@ app = Flask(
 )
 db = ApprovalDB()
 
+# REPLACE LOGIN FUNCTION WITH THIS:
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Use defaults if missing from env
+    default_user = os.getenv('DASHBOARD_USER', 'admin')
+    default_pass = os.getenv('DASHBOARD_PASS', 'default_password_change_me!')
+    
     if request.method == 'POST':
-        if (request.form['username'] == os.getenv('DASHBOARD_USER') and 
-            request.form['password'] == os.getenv('DASHBOARD_PASS')):
+        if (request.form['username'] == default_user and 
+            request.form['password'] == default_pass):
             return redirect(url_for('dashboard'))
+        else:
+            return render_template('login.html', error="Invalid credentials")
     return render_template('login.html')
 
 @app.route('/dashboard')
