@@ -1,9 +1,12 @@
 import sqlite3
 from datetime import datetime
+import os
 
 class ApprovalDB:
     def __init__(self, db_path='/tmp/approvals.db'):
         """Use ephemeral storage compatible with Railway"""
+        # Ensure /tmp exists
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._init_db()
     
