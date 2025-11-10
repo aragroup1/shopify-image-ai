@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Approval Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .image-container { border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; }
+        .badge-apify { background-color: #ef4444; color: white; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; }
+    </style>
+</head>
+<body class="bg-gray-50 py-8">
+    <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Image Approval Dashboard</h1>
+            <div class="text-right">
+                <div class="font-medium">Daily Budget: ${{ os.getenv('DAILY_BUDGET') }}</div>
+                <div class="text-green-600 font-bold">Spent Today: $0.00</div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Images</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed Images</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in pending_items %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded"></div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">Product ID: {{ item[1] }}</div>
+                                    {% if "Supplier:apify" in item[2] %}
+                                    <span class="badge-apify mt-1">Apify Multi-Angle</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="image-grid">
+                                {% for img in item[3].split(',')[:2] %}
+                                <div class="image-container">
+                                    <img src="{{ img }}" class="w-full h-24 object-contain p-1">
+                                </div>
+                                {% endfor %}
+                                {% if item[3].count(',') > 1 %}
+                                <div class="flex items-center justify-center bg-gray-50">
+                                    +{{ item[3].count(',') - 1 }} more
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="image-grid">
+                                {% for img in item[4].split(',') %}
+                                <div class="image-container">
+                                    <img src="{{ img }}" class="w-full h-24 object-contain p-1 bg-blue-50">
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-2">
+                                <a href="/approve/{{ item[0] }}" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">Approve</a>
+                                <button onclick="document.getElementById('reject-{{ item[0] }}').showModal()" 
+                                        class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Reject</button>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Reject modal -->
+                    <dialog id="reject-{{ item[0] }}" class="modal">
+                        <div class="modal-box">
+                            <h3 class="font-bold text-lg">Reject Images for Product {{ item[1] }}</h3>
+                            <form method="POST" action="/reject/{{ item[0] }}" class="mt-4">
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">Reason for rejection</span>
+                                    </label>
+                                    <select name="reason" class="select select-bordered">
+                                        <option>Poor quality</option>
+                                        <option>Wrong colors</option>
+                                        <option>Missing lifestyle shot</option>
+                                        <option>Other</option>
+                                    </select>
+                                </div>
+                                <div class="modal-action">
+                                    <button type="submit" class="btn btn-error">Confirm Rejection</button>
+                                    <button type="button" onclick="this.closest('dialog').close()" 
+                                            class="btn">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                        <form method="dialog" class="modal-backdrop">
+                            <button>close</button>
+                        </form>
+                    </dialog>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
