@@ -1,0 +1,19 @@
+/* Minimal dashboard styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.image-container img {
+    transition: transform 0.2s;
+}
+.image-container:hover img {
+    transform: scale(1.05);
+}
+.badge-apify {
+    display: inline-block;
+    background-color: #ef4444;
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
