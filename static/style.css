@@ -1,19 +1,77 @@
-/* Minimal dashboard styling */
+/* Base styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8fafc;
 }
-.image-container img {
-    transition: transform 0.2s;
+
+/* Image containers */
+.image-container {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
 }
-.image-container:hover img {
-    transform: scale(1.05);
+.image-container:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
+
+/* Badges */
 .badge-apify {
-    display: inline-block;
     background-color: #ef4444;
     color: white;
-    padding: 0.15rem 0.5rem;
+    padding: 0.25rem 0.5rem;
     border-radius: 9999px;
     font-size: 0.75rem;
+    display: inline-block;
     margin-top: 0.25rem;
+}
+
+/* Buttons */
+.approve-btn, .reject-btn {
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+.approve-btn:hover, .reject-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Dialogs */
+dialog {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Alerts */
+.alert {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+.alert-success {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.alert-error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .image-grid {
+        grid-template-columns: 1fr;
+    }
+    .login-container {
+        width: 90%;
+        max-width: 400px;
+    }
 }
