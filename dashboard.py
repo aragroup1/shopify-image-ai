@@ -5,6 +5,12 @@ from models import ApprovalDB
 from dotenv import load_dotenv
 import secrets
 
+BASE_URL = os.getenv('BASE_URL', 'https://shopify-image-ai-production.up.railway.app')
+
+@app.context_processor
+def inject_base_url():
+    return dict(BASE_URL=BASE_URL)
+    
 load_dotenv()
 logger = logging.getLogger("dashboard")
 
