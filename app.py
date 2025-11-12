@@ -17,6 +17,34 @@ app = FastAPI()
 db = ApprovalDB()
 shopify = ShopifyService()
 
+# REPLACE get_startup_warnings FUNCTION WITH THIS:
+def get_startup_warnings():
+    """Collect configuration warnings without crashing"""
+    warnings = []
+    
+    # Verify Shopify connection at startup
+    if shopify.enabled:
+        if shopify.verify_connection():
+            logger.info("✅ Shopify connection verified")
+        else:
+            warnings.append("⚠️ SHOPIFY CONNECTION FAILED - check credentials")
+            shopify.enabled = False
+    else:
+        warnings.append("⚠️ SHOPIFY CREDENTIALS MISSING OR INVALID FORMAT")
+    
+    # Replicate token check
+    replicate_token = os.getenv('REPLICATE_API_TOKEN', '')
+    if not replicate_token.startswith('r8_'):
+        warnings.append("⚠️ REPLICATE TOKEN MISSING OR INVALID FORMAT")
+    
+    # Dashboard auth check
+    if not os.getenv('DASHBOARD_USER') or not os.getenv('DASHBOARD_PASS'):
+        warnings.append("⚠️ DASHBOARD AUTH MISSING - using default credentials")
+        os.environ['DASHBOARD_USER'] = 'admin'
+        os.environ['DASHBOARD_PASS'] = 'default_password_change_me!'
+    
+    return warnings
+
 def log_directory_structure():
     """Debug directory structure on startup"""
     logger.info("\n" + "="*50)
