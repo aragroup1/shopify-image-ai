@@ -8,17 +8,22 @@ logger = logging.getLogger("shopify")
 
 class ShopifyService:
     def __init__(self):
-        self.api_key = os.getenv('SHOPIFY_API_KEY', '')
-        self.password = os.getenv('SHOPIFY_PASSWORD', '')
-        self.store_url = os.getenv('SHOPIFY_STORE_URL', '')
+        self.api_key = os.getenv('SHOPIFY_API_KEY', '').strip()
+        self.password = os.getenv('SHOPIFY_PASSWORD', '').strip()  # This should be the shpat_ token
+        self.store_url = os.getenv('SHOPIFY_STORE_URL', '').strip()
         
-        # Critical fix: Admin API access token starts with shpat_
-        if self.api_key.startswith('shpat_') and self.password.startswith('shppa_'):
-            self.enabled = True
-            logger.info("✅ Valid Shopify credentials detected")
+        # CORRECT VALIDATION: Password should start with shpat_
+        self.enabled = False
+        if self.api_key and self.password and self.store_url:
+            if self.password.startswith('shpat_'):
+                self.enabled = True
+                logger.info("✅ CORRECT Shopify credentials format detected")
+                logger.info(f"API Key length: {len(self.api_key)}")
+                logger.info(f"Store URL: {self.store_url}")
+            else:
+                logger.warning(f"⚠️ INVALID PASSWORD FORMAT - should start with 'shpat_' but got: {self.password[:10]}...")
         else:
-            self.enabled = False
-            logger.warning("⚠️ Invalid Shopify credentials format")
+            logger.warning("⚠️ MISSING SHOPIFY CREDENTIALS")
         
         self.base_url = f"https://{self.api_key}:{self.password}@{self.store_url}/admin/api/2023-10" if self.enabled else ""
     
@@ -30,29 +35,35 @@ class ShopifyService:
         
         try:
             url = f"{self.base_url}/products/{product_id}/images.json"
-            logger.debug(f"GET {url}")
-            response = requests.get(url, timeout=10)
+            logger.info(f"📡 Fetching images from: {url.split('@')[1]}")  # Hide credentials in logs
+            response = requests.get(url, timeout=15)
             
             if response.status_code == 200:
-                return response.json().get('images', [])
+                images = response.json().get('images', [])
+                logger.info(f"✅ Retrieved {len(images)} images for product {product_id}")
+                return images
             else:
-                logger.error(f"❌ Shopify API error ({response.status_code}): {response.text}")
+                logger.error(f"❌ Shopify API error ({response.status_code}): {response.text[:200]}")
                 return []
         except Exception as e:
             logger.exception(f"🔥 Shopify API exception: {str(e)}")
             return []
     
-    def get_product_tags(self, product_id):
-        """Get tags for product detection logic"""
+    def verify_connection(self):
+        """Test Shopify connection at startup"""
         if not self.enabled:
-            return []
+            return False
         
         try:
-            url = f"{self.base_url}/products/{product_id}.json"
+            url = f"{self.base_url}/shop.json"
             response = requests.get(url, timeout=10)
             if response.status_code == 200:
-                return response.json()['product'].get('tags', [])
-            return []
+                shop_name = response.json()['shop']['name']
+                logger.info(f"🎉 Successfully connected to Shopify store: {shop_name}")
+                return True
+            else:
+                logger.error(f"❌ Connection failed (Status {response.status_code})")
+                return False
         except Exception as e:
-            logger.exception(f"🔥 Shopify tags exception: {str(e)}")
-            return []
+            logger.exception(f"🔥 Connection test failed: {str(e)}")
+            return False
