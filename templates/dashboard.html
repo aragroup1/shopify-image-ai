@@ -180,14 +180,11 @@
                                     <div class="text-4xl mb-4">📭</div>
                                     <h3 class="text-lg font-medium text-gray-900 mb-1">No pending approvals</h3>
                                     <p class="text-gray-500">Trigger image processing by updating products in Shopify</p>
-                                    <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                                            onclick="document.getElementById('simulate-webhook').click()">
-                                        Simulate Webhook
-                                    </button>
-                                    <form method="POST" action="#" style="display:none;">
-                                        <input type="hidden" name="simulate" value="true">
-                                        <button id="simulate-webhook" type="submit"></button>
-                                    </form>
+                                   form method="POST" action="/dashboard/simulate-webhook" style="display:inline;">
+    <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition flex items-center">
+        <i class="fas fa-bolt mr-2"></i>Simulate Webhook
+    </button>
+</form>
                                 </div>
                             </td>
                         </tr>
