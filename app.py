@@ -6,7 +6,9 @@ from fastapi.middleware.wsgi import WSGIMiddleware
 from dotenv import load_dotenv
 from models import ApprovalDB
 from services.shopify import ShopifyService
-import requests
+from threading import Thread
+import time
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,34 +18,6 @@ load_dotenv()
 app = FastAPI()
 db = ApprovalDB()
 shopify = ShopifyService()
-
-# REPLACE get_startup_warnings FUNCTION WITH THIS:
-def get_startup_warnings():
-    """Collect configuration warnings without crashing"""
-    warnings = []
-    
-    # Verify Shopify connection at startup
-    if shopify.enabled:
-        if shopify.verify_connection():
-            logger.info("✅ Shopify connection verified")
-        else:
-            warnings.append("⚠️ SHOPIFY CONNECTION FAILED - check credentials")
-            shopify.enabled = False
-    else:
-        warnings.append("⚠️ SHOPIFY CREDENTIALS MISSING OR INVALID FORMAT")
-    
-    # Replicate token check
-    replicate_token = os.getenv('REPLICATE_API_TOKEN', '')
-    if not replicate_token.startswith('r8_'):
-        warnings.append("⚠️ REPLICATE TOKEN MISSING OR INVALID FORMAT")
-    
-    # Dashboard auth check
-    if not os.getenv('DASHBOARD_USER') or not os.getenv('DASHBOARD_PASS'):
-        warnings.append("⚠️ DASHBOARD AUTH MISSING - using default credentials")
-        os.environ['DASHBOARD_USER'] = 'admin'
-        os.environ['DASHBOARD_PASS'] = 'default_password_change_me!'
-    
-    return warnings
 
 def log_directory_structure():
     """Debug directory structure on startup"""
@@ -67,39 +41,14 @@ def get_startup_warnings():
     """Collect configuration warnings without crashing"""
     warnings = []
     
-    # Verify Shopify connection at startup
-    if shopify.enabled:
-        try:
-            shop_url = f"https://{shopify.store_url}/admin/api/2023-10/shop.json"
-            response = requests.get(
-                shop_url,
-                auth=(shopify.api_key, shopify.password),
-                timeout=5
-            )
-            if response.status_code == 200:
-                logger.info("✅ Shopify connection verified")
-            else:
-                warnings.append(f"⚠️ SHOPIFY CONNECTION FAILED (Status: {response.status_code})")
-                shopify.enabled = False
-        except Exception as e:
-            warnings.append(f"⚠️ SHOPIFY ERROR: {str(e)}")
-            shopify.enabled = False
+    # Replicate token check
+    replicate_token = os.getenv('REPLICATE_API_TOKEN', '')
+    if not replicate_token.startswith('r8_'):
+        warnings.append("⚠️ REPLICATE TOKEN MISSING OR INVALID FORMAT")
     
-    # Critical but non-fatal checks
-    if not os.getenv('SHOPIFY_API_KEY') or not os.getenv('SHOPIFY_PASSWORD'):
-        warnings.append("⚠️ SHOPIFY CREDENTIALS MISSING - webhook processing disabled")
-    
-    if not os.getenv('REPLICATE_API_TOKEN'):
-        warnings.append("⚠️ REPLICATE TOKEN MISSING - AI processing disabled")
-    
+    # Dashboard auth check
     if not os.getenv('DASHBOARD_USER') or not os.getenv('DASHBOARD_PASS'):
         warnings.append("⚠️ DASHBOARD AUTH MISSING - using default credentials")
-        # Set safe defaults
-        os.environ['DASHBOARD_USER'] = 'admin'
-        os.environ['DASHBOARD_PASS'] = 'default_password_change_me!'
-    
-    # Required for Railway but provide fallback
-    os.environ['PORT'] = os.getenv('PORT', '8000')
     
     return warnings
 
@@ -110,12 +59,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Railway health check - always passes"""
+    """Railway health check - ultra fast"""
     return {
         "status": "ok",
-        "db_status": "connected" if db.conn else "disconnected",
-        "shopify_status": "enabled" if shopify.enabled else "disabled",
-        "warnings": get_startup_warnings()
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0",
+        "shopify_status": "connected" if shopify.enabled else "disconnected"
     }
 
 @app.post("/webhook/product_updated")
@@ -178,17 +127,24 @@ def process_product(product_id, tags):
 
 @app.on_event("startup")
 async def graceful_startup():
+    """Non-blocking startup - verify connections in background"""
     log_directory_structure()
-    warnings = get_startup_warnings()
+    logger.info("✅ Application started (background verification in progress)")
     
-    if warnings:
-        logger.warning("\n" + "="*50)
-        logger.warning("CONFIGURATION WARNINGS - APP WILL RUN IN DEGRADED MODE")
-        for warning in warnings:
-            logger.warning(warning)
-        logger.warning("="*50 + "\n")
+    # Start Shopify verification in background thread
+    Thread(target=async_shopify_verification, daemon=True).start()
+
+def async_shopify_verification():
+    """Non-blocking Shopify verification"""
+    time.sleep(2)  # Let server start first
+    
+    if shopify.enabled:
+        if shopify.verify_connection():
+            logger.info("✅ Shopify connection verified in background")
+        else:
+            logger.warning("⚠️ Shopify connection failed in background verification")
     else:
-        logger.info("✅ All systems operational")
+        logger.warning("⚠️ Shopify service disabled")
 
 # Mount Flask dashboard under /dashboard
 from dashboard import app as dashboard_app
