@@ -56,9 +56,22 @@
                                             </div>
                                             <div class="ml-4">
                                                 <div class="font-medium text-gray-900">Product ID: {{ item[1] }}</div>
-                                                {% if "Supplier:apify" in item[2] %}
+                                                <!-- SAFE CHECK FOR TAGS -->
+                                                {% if item[2] and "Supplier:apify" in item[2] %}
                                                 <span class="badge badge-apify mt-1 inline-block">
                                                     <i class="fas fa-camera"></i> Apify Multi-Angle
+                                                </span>
+                                                {% elif item[2] and "apify" in item[2].lower() %}
+                                                <span class="badge badge-apify mt-1 inline-block">
+                                                    <i class="fas fa-camera"></i> Apify Product
+                                                </span>
+                                                {% elif item[2] %}
+                                                <span class="badge badge-pending mt-1 inline-block">
+                                                    <i class="fas fa-tag"></i> {{ item[2] }}
+                                                </span>
+                                                {% else %}
+                                                <span class="badge badge-pending mt-1 inline-block">
+                                                    <i class="fas fa-info-circle"></i> Standard Product
                                                 </span>
                                                 {% endif %}
                                             </div>
@@ -224,7 +237,7 @@
             
             const reason = document.getElementById('reason').value;
             const form = document.getElementById('reject-form');
-            form.action = `${BASE_URL}/dashboard/reject/${currentApprovalId}`;
+            form.action = `{{ BASE_URL }}/dashboard/reject/${currentApprovalId}`;
             form.submit();
         }
         
