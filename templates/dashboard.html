@@ -21,6 +21,23 @@
                 <span class="status-dot"></span>
                 <span>System Operational</span>
             </div>
+
+            <!-- Add this button in the card header section -->
+<div class="card-header">
+    <h2 class="card-title">
+        <i class="fas fa-images"></i> Image Approval Dashboard
+    </h2>
+    <div class="flex gap-3">
+        <span class="badge badge-pending">
+            {{ pending_items|length }} Pending
+        </span>
+        <form method="POST" action="{{ BASE_URL }}/dashboard/fetch-all-products">
+            <button type="submit" class="btn btn-primary btn-sm pulse">
+                <i class="fas fa-sync-alt mr-1"></i>Fetch All Products
+            </button>
+        </form>
+    </div>
+</div>
         </header>
         
         <main>
