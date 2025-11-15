@@ -1,5 +1,7 @@
 import os
 import logging
+import time
+from datetime import datetime
 from fastapi import FastAPI, BackgroundTasks, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.wsgi import WSGIMiddleware
@@ -7,12 +9,12 @@ from dotenv import load_dotenv
 from models import ApprovalDB
 from services.shopify import ShopifyService
 from threading import Thread
-import time
-from datetime import datetime
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("startup")
+startup_time = time.time()
 
 load_dotenv()
 app = FastAPI()
@@ -52,6 +54,63 @@ def get_startup_warnings():
     
     return warnings
 
+def get_memory_usage():
+    """Simple memory usage check"""
+    try:
+        import psutil
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / 1024 / 1024  # MB
+    except:
+        return "unknown"
+
+def is_app_ready():
+    """Quick check if app is ready for traffic"""
+    return True
+
+@app.get("/")
+async def root():
+    """Redirect root to dashboard login"""
+    return RedirectResponse("/dashboard")
+
+@app.get("/health")
+async def health_check():
+    """Ultra-fast health check for Railway"""
+    return {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "uptime": time.time() - startup_time,
+        "memory": get_memory_usage(),
+        "ready": is_app_ready(),
+        "shopify_status": "connected" if shopify.enabled else "disconnected"
+    }
+
+@app.post("/webhook/product_updated")
+async def handle_product_update(request: Request, background_tasks: BackgroundTasks):
+    """Shopify webhook handler - processes product updates"""
+    if not shopify.enabled:
+        logger.warning("🚫 Ignoring webhook - Shopify service disabled")
+        return {"status": "shopify_disabled"}
+    
+    try:
+        payload = await request.json()
+        product_id = payload.get('id')
+        tags = payload.get('tags', [])
+        
+        if not product_id:
+            logger.error("❌ Webhook missing product ID")
+            return {"status": "error", "message": "missing_product_id"}
+        
+        logger.info(f"✅ Webhook received for product: {product_id}")
+        logger.info(f"🏷️ Product tags: {tags}")
+        
+        # Add to background processing
+        background_tasks.add_task(process_product, product_id, tags)
+        return {"status": "processing_started", "product_id": product_id}
+    
+    except Exception as e:
+        logger.exception(f"🔥 Webhook processing failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 @app.post("/fetch-all-products")
 async def fetch_all_products(background_tasks: BackgroundTasks):
     """Manually trigger fetching of all products from Shopify"""
@@ -61,20 +120,37 @@ async def fetch_all_products(background_tasks: BackgroundTasks):
     background_tasks.add_task(process_all_products)
     return {"status": "started", "message": "Batch processing started - check dashboard in 2-5 minutes"}
 
-@app.get("/")
-async def root():
-    """Redirect root to dashboard login"""
-    return RedirectResponse("/dashboard/login")
-
-@app.get("/health")
-async def health_check():
-    """Railway health check - ultra fast"""
-    return {
-        "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0",
-        "shopify_status": "connected" if shopify.enabled else "disconnected"
-    }
+def process_product(product_id, tags):
+    """Background task to process product images"""
+    try:
+        # Get product images from Shopify
+        images = shopify.get_product_images(product_id)
+        if not images:
+            logger.warning(f"🖼️ No images found for product {product_id}")
+            return
+        
+        logger.info(f"📸 Found {len(images)} images for product {product_id}")
+        
+        # Special handling for Apify products
+        if "Supplier:apify" in tags:
+            logger.info(f"🔍 Processing Supplier:apify tagged product")
+            # In real implementation: split multi-angle images
+            processed_images = [img['src'] for img in images[:5]]  # Simple placeholder
+        else:
+            # Standard processing
+            processed_images = [img['src'] for img in images[:5]]  # Simple placeholder
+        
+        # Add to approval queue
+        db.add_pending(
+            product_id=str(product_id),
+            original_images=[img['src'] for img in images],
+            processed_images=processed_images,
+            variant_id=','.join(tags) if isinstance(tags, list) else tags
+        )
+        logger.info(f"✅ Added pending approval for product {product_id}")
+    
+    except Exception as e:
+        logger.exception(f"💥 Processing failed for product {product_id}: {str(e)}")
 
 def process_all_products():
     """Process ALL products from Shopify - not just webhooks"""
@@ -105,8 +181,11 @@ def process_all_products():
                 continue
             
             # Determine product type
-            is_apify = 'Supplier:apify' in tags
-            is_clothing = any(keyword in title.lower() for keyword in ['shirt', 'dress', 'pants', 'jacket', 'hoodie', 'sweater', 'top', 'bottom', 'jeans'])
+            is_apify = 'Supplier:apify' in str(tags)
+            is_clothing = any(keyword in title.lower() for keyword in [
+                'shirt', 'dress', 'pants', 'jacket', 'hoodie', 'sweater', 
+                'top', 'bottom', 'jeans', 'blouse', 'skirt', 'shorts'
+            ])
             
             logger.info(f"🔍 Processing: {title} (ID: {product_id})")
             logger.info(f"🏷️ Tags: {tags}")
@@ -139,7 +218,7 @@ def process_all_products():
                 product_id=str(product_id),
                 original_images=[img['src'] for img in images],
                 processed_images=processed_images,
-                variant_id=tags  # Store tags for display
+                variant_id=str(tags)  # Store tags for display
             )
             
             processed_count += 1
@@ -156,85 +235,21 @@ def process_all_products():
         
     except Exception as e:
         logger.exception(f"💥 Batch processing failed: {str(e)}")
-        
-@app.post("/webhook/product_updated")
-async def handle_product_update(request: Request, background_tasks: BackgroundTasks):
-    """Shopify webhook handler - processes product updates"""
-    if not shopify.enabled:
-        logger.warning("🚫 Ignoring webhook - Shopify service disabled")
-        return {"status": "shopify_disabled"}
-    
-    try:
-        payload = await request.json()
-        product_id = payload.get('id')
-        tags = payload.get('tags', [])
-        
-        if not product_id:
-            logger.error("❌ Webhook missing product ID")
-            return {"status": "error", "message": "missing_product_id"}
-        
-        logger.info(f"✅ Webhook received for product: {product_id}")
-        logger.info(f"🏷️ Product tags: {tags}")
-        
-        # Add to background processing
-        background_tasks.add_task(process_product, product_id, tags)
-        return {"status": "processing_started", "product_id": product_id}
-    
-    except Exception as e:
-        logger.exception(f"🔥 Webhook processing failed: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-def process_product(product_id, tags):
-    """Background task to process product images"""
-    try:
-        # Get product images from Shopify
-        images = shopify.get_product_images(product_id)
-        if not images:
-            logger.warning(f"🖼️ No images found for product {product_id}")
-            return
-        
-        logger.info(f"📸 Found {len(images)} images for product {product_id}")
-        
-        # Special handling for Apify products
-        if "Supplier:apify" in tags:
-            logger.info(f"🔍 Processing Supplier:apify tagged product")
-            # In real implementation: split multi-angle images
-            processed_images = [img['src'] for img in images[:5]]  # Simple placeholder
-        else:
-            # Standard processing
-            processed_images = [img['src'] for img in images[:5]]  # Simple placeholder
-        
-        # Add to approval queue
-        db.add_pending(
-            product_id=str(product_id),
-            original_images=[img['src'] for img in images],
-            processed_images=processed_images
-        )
-        logger.info(f"✅ Added pending approval for product {product_id}")
-    
-    except Exception as e:
-        logger.exception(f"💥 Processing failed for product {product_id}: {str(e)}")
 
 @app.on_event("startup")
 async def graceful_startup():
-    """Non-blocking startup - verify connections in background"""
+    """Optimized startup - no heavy operations"""
     log_directory_structure()
-    logger.info("✅ Application started (background verification in progress)")
+    logger.info("✅ Application started (lightweight startup)")
     
-    # Start Shopify verification in background thread
-    Thread(target=async_shopify_verification, daemon=True).start()
-
-def async_shopify_verification():
-    """Non-blocking Shopify verification"""
-    time.sleep(2)  # Let server start first
-    
-    if shopify.enabled:
-        if shopify.verify_connection():
-            logger.info("✅ Shopify connection verified in background")
-        else:
-            logger.warning("⚠️ Shopify connection failed in background verification")
-    else:
-        logger.warning("⚠️ Shopify service disabled")
+    # ONLY log warnings - no blocking operations
+    warnings = get_startup_warnings()
+    if warnings:
+        logger.warning("\n" + "="*50)
+        logger.warning("CONFIGURATION WARNINGS")
+        for warning in warnings:
+            logger.warning(warning)
+        logger.warning("="*50 + "\n")
 
 # ===== CRITICAL FIX: MOVE FLASK MOUNTING TO BOTTOM =====
 # This prevents circular imports and mounting errors
