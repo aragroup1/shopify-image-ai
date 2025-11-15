@@ -4,7 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, g
 from models import ApprovalDB
 from dotenv import load_dotenv
 import secrets
-from urllib.parse import urlparse
+import requests
+import time
 
 load_dotenv()
 logger = logging.getLogger("dashboard")
@@ -72,7 +73,7 @@ def create_dashboard_app():
     def dashboard():
         """Main dashboard route - fixed to root of Flask app"""
         pending = db.get_pending()
-        return render_template('dashboard.html', pending_items=pending, os=os)
+        return render_template('dashboard.html', pending_items=pending, os=os, BASE_URL=BASE_URL)
 
     @app.route('/approve/<int:approval_id>')
     @login_required
@@ -96,7 +97,7 @@ def create_dashboard_app():
         # Create mock product data
         mock_product = {
             'id': 9999999,
-            'tags': ['Supplier:apify', 'test-product'],
+            'tags': 'Supplier:apify,clothing,test-product',
             'images': [
                 {'src': 'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=300&q=80'},
                 {'src': 'https://images.unsplash.com/photo-1591047139829-d91485f5e0e9?auto=format&fit=crop&w=300&q=80'}
@@ -111,33 +112,28 @@ def create_dashboard_app():
                 'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&w=300&q=80&blend=6366f1&blend-mode=normal&sat=-100',
                 'https://images.unsplash.com/photo-1591047139829-d91485f5e0e9?auto=format&fit=crop&w=300&q=80&blend=6366f1&blend-mode=normal&sat=-100',
                 'https://images.unsplash.com/photo-1541099649105-f69ad2cb1727?auto=format&fit=crop&w=300&q=80&blend=6366f1&blend-mode=normal&sat=-100'
-            ]
+            ],
+            variant_id=mock_product['tags']
         )
         
         logger.info("✅ Simulated webhook processed successfully")
         return redirect(url_for('dashboard'))
 
     @app.route('/fetch-all-products', methods=['POST'])
-@login_required
-def manual_fetch():
-    """Manual trigger for batch product fetching"""
-    logger.info(">manual Manual batch fetch triggered by user")
-    
-    # Trigger the background task
-    from threading import Thread
-    Thread(target=process_all_products_thread, daemon=True).start()
-    
-    return redirect(url_for('dashboard'))
-
-def process_all_products_thread():
-    """Wrapper function to call the FastAPI function"""
-    import requests
-    BASE_URL = os.getenv('BASE_URL', 'https://shopify-image-ai-production.up.railway.app')
-    try:
-        response = requests.post(f"{BASE_URL}/fetch-all-products")
-        logger.info(f"📡 Batch fetch API response: {response.status_code}")
-    except Exception as e:
-        logger.exception(f"🔥 Failed to trigger batch fetch: {str(e)}")
+    @login_required
+    def manual_fetch():
+        """Manual trigger for batch product fetching"""
+        logger.info(">manual Manual batch fetch triggered by user")
+        
+        # Trigger the FastAPI endpoint
+        try:
+            BASE_URL = os.getenv('BASE_URL', 'https://shopify-image-ai-production.up.railway.app')
+            response = requests.post(f"{BASE_URL}/fetch-all-products")
+            logger.info(f"📡 Batch fetch API response: {response.status_code} - {response.text}")
+        except Exception as e:
+            logger.exception(f"🔥 Failed to trigger batch fetch: {str(e)}")
+        
+        return redirect(url_for('dashboard'))
 
     @app.route('/logout')
     def logout():
