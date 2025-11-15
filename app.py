@@ -121,7 +121,7 @@ async def fetch_all_products(background_tasks: BackgroundTasks):
     return {"status": "started", "message": "Batch processing started - check dashboard in 2-5 minutes"}
 
 def process_product(product_id, tags):
-    """Background task to process product images"""
+    """Background task to process product images with real AI processing"""
     try:
         # Get product images from Shopify
         images = shopify.get_product_images(product_id)
@@ -131,14 +131,29 @@ def process_product(product_id, tags):
         
         logger.info(f"📸 Found {len(images)} images for product {product_id}")
         
-        # Special handling for Apify products
+        # Get first image as main image
+        main_image = images[0]['src']
+        
+        # Process based on product type
+        processed_images = []
+        
         if "Supplier:apify" in tags:
-            logger.info(f"🔍 Processing Supplier:apify tagged product")
-            # In real implementation: split multi-angle images
-            processed_images = [img['src'] for img in images[:5]]  # Simple placeholder
+            logger.info(f"🔧 Processing as Apify multi-angle product")
+            # Split composite image into multiple angles
+            processed_images = split_apify_image(main_image)
+        
+        elif any(keyword in str(tags).lower() for keyword in ['clothing', 'shirt', 'dress', 'pants']):
+            logger.info(f"👗 Processing as clothing product")
+            # Generate lifestyle + swatch collage
+            swatch_images = [img['src'] for img in images[1:]]
+            processed_images = generate_clothing_gallery(main_image, swatch_images)
+        
         else:
-            # Standard processing
-            processed_images = [img['src'] for img in images[:5]]  # Simple placeholder
+            logger.info(f"📦 Processing as standard product")
+            # Add badges to each image
+            for img in images[:5]:
+                processed_img = add_badges(img['src'])
+                processed_images.append(processed_img)
         
         # Add to approval queue
         db.add_pending(
@@ -147,7 +162,7 @@ def process_product(product_id, tags):
             processed_images=processed_images,
             variant_id=','.join(tags) if isinstance(tags, list) else tags
         )
-        logger.info(f"✅ Added pending approval for product {product_id}")
+        logger.info(f"✅ Added {len(processed_images)} processed images to approval queue for product {product_id}")
     
     except Exception as e:
         logger.exception(f"💥 Processing failed for product {product_id}: {str(e)}")
