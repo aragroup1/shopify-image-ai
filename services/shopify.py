@@ -41,49 +41,7 @@ class ShopifyService:
                 logger.info(f"Store URL: {self.store_url}")
         
         self.base_url = f"https://{self.api_key}:{self.password}@{self.store_url}/admin/api/2023-10" if self.enabled else ""
-
-    def get_all_products(self, limit=250):
-    """Fetch all products from Shopify with pagination"""
-    if not self.enabled:
-        return []
     
-    all_products = []
-    page_info = None
-    
-    try:
-        # Fetch up to 1000 products (4 pages of 250)
-        for _ in range(4):
-            url = f"{self.base_url}/products.json?limit={limit}"
-            if page_info:
-                url += f"&page_info={page_info}"
-            
-            logger.info(f"📡 Fetching products from: {url.split('@')[1]}")
-            response = requests.get(url, timeout=30)
-            
-            if response.status_code == 200:
-                data = response.json()
-                products = data.get('products', [])
-                all_products.extend(products)
-                
-                # Check for pagination
-                if 'Link' in response.headers:
-                    links = requests.utils.parse_header_links(response.headers['Link'])
-                    next_link = next((link for link in links if link.get('rel') == 'next'), None)
-                    if next_link:
-                        page_info = next_link['url'].split('page_info=')[1].split('&')[0]
-                        continue
-                break
-            else:
-                logger.error(f"❌ Failed to fetch products (Status {response.status_code})")
-                break
-                
-        logger.info(f"✅ Retrieved {len(all_products)} total products from Shopify")
-        return all_products
-        
-    except Exception as e:
-        logger.exception(f"🔥 Error fetching all products: {str(e)}")
-        return []
-        
     def get_product_images(self, product_id):
         """Fetch all images for a product"""
         if not self.enabled:
@@ -127,3 +85,45 @@ class ShopifyService:
         except Exception as e:
             logger.exception(f"🔥 Connection test failed: {str(e)}")
             return False
+    
+    def get_all_products(self, limit=250):
+        """Fetch all products from Shopify with pagination"""
+        if not self.enabled:
+            return []
+        
+        all_products = []
+        page_info = None
+        
+        try:
+            # Fetch up to 1000 products (4 pages of 250)
+            for _ in range(4):
+                url = f"{self.base_url}/products.json?limit={limit}"
+                if page_info:
+                    url += f"&page_info={page_info}"
+                
+                logger.info(f"📡 Fetching products from: {url.split('@')[1]}")
+                response = requests.get(url, timeout=30)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    products = data.get('products', [])
+                    all_products.extend(products)
+                    
+                    # Check for pagination
+                    if 'Link' in response.headers:
+                        links = requests.utils.parse_header_links(response.headers['Link'])
+                        next_link = next((link for link in links if link.get('rel') == 'next'), None)
+                        if next_link:
+                            page_info = next_link['url'].split('page_info=')[1].split('&')[0]
+                            continue
+                    break
+                else:
+                    logger.error(f"❌ Failed to fetch products (Status {response.status_code})")
+                    break
+                    
+            logger.info(f"✅ Retrieved {len(all_products)} total products from Shopify")
+            return all_products
+            
+        except Exception as e:
+            logger.exception(f"🔥 Error fetching all products: {str(e)}")
+            return []
