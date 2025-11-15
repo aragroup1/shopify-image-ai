@@ -1,220 +1,236 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Image Approval Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="icon" href="/dashboard/static/favicon.ico">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .image-grid { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 1rem;
-            max-width: 100%;
-        }
-        .image-container { 
-            border: 1px solid #e2e8f0; 
-            border-radius: 0.5rem; 
-            overflow: hidden;
-            height: 80px;
-        }
-        .badge-apify { 
-            background-color: #ef4444; 
-            color: white; 
-            padding: 0.25rem 0.5rem; 
-            border-radius: 9999px; 
-            font-size: 0.75rem; 
-        }
-        .approve-btn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        }
-        .reject-btn {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-        .dialog-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .dialog-content {
-            background: white;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            max-width: 500px;
-            width: 90%;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImageRelation Dashboard | Shopify AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ BASE_URL }}/dashboard/static/style.css">
+    <link rel="icon" href="{{ BASE_URL }}/dashboard/static/favicon.ico">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
-<body class="bg-gray-50 py-8">
-    <div class="container mx-auto px-4">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">ImageRelation Dashboard</h1>
-                <p class="text-gray-500 mt-1">Review and approve AI-processed product images</p>
+<body>
+    <div class="container">
+        <header class="header">
+            <a href="{{ BASE_URL }}/dashboard" class="logo">
+                <div class="logo-icon">AI</div>
+                <div class="logo-text">ImageRelation</div>
+            </a>
+            
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>System Operational</span>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow text-right w-full md:w-auto">
-                <div class="font-medium mb-1">System Status</div>
-                <div class="flex items-center justify-end">
-                    <span class="h-3 w-3 bg-green-500 rounded-full mr-2"></span>
-                    <span class="text-green-600 font-bold">Operational</span>
+        </header>
+        
+        <main>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-images"></i> Image Approval Dashboard
+                    </h2>
+                    <span class="badge badge-pending">
+                        {{ pending_items|length }} Pending
+                    </span>
                 </div>
-                <div class="text-xs text-gray-500 mt-1">
-                    {% if warnings %}
-                        {% for warning in warnings %}
-                        <div class="text-yellow-600">{{ warning }}</div>
-                        {% endfor %}
+                
+                <div class="card-content">
+                    {% if pending_items %}
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Original Images</th>
+                                    <th>Processed Images</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pending_items %}
+                                <tr>
+                                    <td>
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-700 font-bold">
+                                                #{{ item[0] }}
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="font-medium text-gray-900">Product ID: {{ item[1] }}</div>
+                                                {% if "Supplier:apify" in item[2] %}
+                                                <span class="badge badge-apify mt-1 inline-block">
+                                                    <i class="fas fa-camera"></i> Apify Multi-Angle
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="image-grid">
+                                            {% for img in item[3].split(',')[:2] %}
+                                            <div class="image-container">
+                                                <img src="{{ img }}" alt="Original image">
+                                            </div>
+                                            {% endfor %}
+                                            {% if item[3].count(',') > 1 %}
+                                            <div class="image-container bg-gray-50 border-2 border-dashed rounded-lg flex items-center justify-center text-gray-500 text-sm">
+                                                +{{ item[3].count(',') - 1 }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="image-grid">
+                                            {% for img in item[4].split(',') %}
+                                            <div class="image-container">
+                                                <img src="{{ img }}" alt="Processed image">
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col sm:flex-row gap-2">
+                                            <a href="{{ BASE_URL }}/dashboard/approve/{{ item[0] }}" 
+                                               class="btn btn-success btn-sm">
+                                                <i class="fas fa-check"></i> Approve
+                                            </a>
+                                            <button onclick="openRejectModal({{ item[0] }})" 
+                                                    class="btn btn-danger btn-sm">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                        <div class="text-gray-500">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Images will update in Shopify within 1 minute of approval
+                        </div>
+                        <form method="POST" action="{{ BASE_URL }}/dashboard/simulate-webhook">
+                            <button type="submit" class="btn btn-outline">
+                                <i class="fas fa-bolt"></i> Simulate Webhook
+                            </button>
+                        </form>
+                    </div>
+                    
                     {% else %}
-                        All systems fully operational
+                    <div class="empty-state">
+                        <div class="empty-icon">🖼️</div>
+                        <h3 class="empty-title">No Pending Approvals</h3>
+                        <p class="empty-text">
+                            Trigger image processing by updating products in Shopify. 
+                            Products with the tag <span class="badge badge-apify">Supplier:apify</span> will be processed automatically.
+                        </p>
+                        <form method="POST" action="{{ BASE_URL }}/dashboard/simulate-webhook">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-bolt mr-2"></i>Simulate Webhook Test
+                            </button>
+                        </form>
+                    </div>
                     {% endif %}
                 </div>
             </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original Images</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed Images</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for item in pending_items %}
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
-                                        <span class="text-gray-500 font-bold">#{{ item[0] }}</span>
-                                    </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900">Product ID: {{ item[1] }}</div>
-                                        {% if "Supplier:apify" in item[2] %}
-                                        <span class="badge-apify mt-1 inline-block">Apify Multi-Angle</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="image-grid">
-                                    {% for img in item[3].split(',')[:2] %}
-                                    <div class="image-container">
-                                        <img src="{{ img }}" class="w-full h-full object-contain p-1">
-                                    </div>
-                                    {% endfor %}
-                                    {% if item[3].count(',') > 1 %}
-                                    <div class="flex items-center justify-center bg-gray-50 border border-dashed rounded">
-                                        <span class="text-gray-500 text-sm">+{{ item[3].count(',') - 1 }} more</span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="image-grid">
-                                    {% for img in item[4].split(',') %}
-                                    <div class="image-container">
-                                        <img src="{{ img }}" class="w-full h-full object-contain p-1 bg-blue-50">
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                                    <a href="/dashboard/approve/{{ item[0] }}" 
-                                       class="px-3 py-1.5 approve-btn text-white rounded hover:opacity-90 transition flex items-center justify-center">
-                                        <i class="fas fa-check mr-1"></i> Approve
-                                    </a>
-                                    <button onclick="document.getElementById('reject-{{ item[0] }}').showModal()" 
-                                            class="px-3 py-1.5 reject-btn text-white rounded hover:opacity-90 transition flex items-center justify-center">
-                                        <i class="fas fa-times mr-1"></i> Reject
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        
-                        <!-- Reject modal -->
-                        <dialog id="reject-{{ item[0] }}" class="dialog-backdrop">
-                            <div class="dialog-content">
-                                <h3 class="text-xl font-bold text-gray-800 mb-4">Reject Images for Product #{{ item[1] }}</h3>
-                                <form method="POST" action="/dashboard/reject/{{ item[0] }}" class="space-y-4">
-                                    <div>
-                                        <label class="block text-gray-700 text-sm font-bold mb-2" for="reason">
-                                            Reason for rejection
-                                        </label>
-                                        <select name="reason" id="reason" class="w-full px-4 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                                            <option value="Poor quality">Poor image quality</option>
-                                            <option value="Wrong colors">Incorrect color representation</option>
-                                            <option value="Missing lifestyle shot">Missing lifestyle shot</option>
-                                            <option value="Composition issues">Bad composition/layout</option>
-                                            <option value="Other">Other reason</option>
-                                        </select>
-                                    </div>
-                                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                                        <button type="button" onclick="this.closest('dialog').close()" 
-                                                class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50">
-                                            Cancel
-                                        </button>
-                                        <button type="submit" 
-                                                class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">
-                                            Confirm Rejection
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </dialog>
-                        {% endfor %}
-                        
-                        {% if not pending_items %}
-                        <tr>
-                            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
-                                <div class="flex flex-col items-center justify-center">
-                                    <div class="text-4xl mb-4">📭</div>
-                                    <h3 class="text-lg font-medium text-gray-900 mb-1">No pending approvals</h3>
-                                    <p class="text-gray-500">Trigger image processing by updating products in Shopify</p>
-                                   form method="POST" action="/dashboard/simulate-webhook" style="display:inline;">
-    <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition flex items-center">
-        <i class="fas fa-bolt mr-2"></i>Simulate Webhook
-    </button>
-</form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+            
+            <div class="text-center text-gray-500 text-sm mt-8">
+                <p>
+                    <i class="fas fa-robot"></i> AI-powered image processing • 
+                    <i class="fas fa-cloud"></i> Hosted on Railway • 
+                    <i class="fas fa-lock"></i> All approvals are manual
+                </p>
+                <p class="mt-1">
+                    System Status: <span class="text-green-600 font-medium">Optimal</span> • 
+                    Shopify Connection: <span class="text-green-600 font-medium">Active</span>
+                </p>
             </div>
-        </div>
-        
-        <div class="mt-6 text-center text-gray-500 text-sm">
-            <p>ImageSharp • Railway Hosted • {{ pending_items|length }} pending approvals</p>
+        </main>
+    </div>
+    
+    <!-- Reject Modal Template -->
+    <div id="rejectModalTemplate" style="display:none;">
+        <div class="modal-backdrop" id="modal-{{ item[0] }}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Reject Images for Product #{{ item[1] }}</h3>
+                    <button onclick="closeModal({{ item[0] }})" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ BASE_URL }}/dashboard/reject/{{ item[0] }}" id="reject-form-{{ item[0] }}">
+                        <div class="form-group">
+                            <label for="reason-{{ item[0] }}" class="form-label">Reason for rejection</label>
+                            <select name="reason" id="reason-{{ item[0] }}" class="form-control">
+                                <option value="Poor quality">Poor image quality</option>
+                                <option value="Wrong colors">Incorrect color representation</option>
+                                <option value="Missing lifestyle">Missing lifestyle shot</option>
+                                <option value="Composition issues">Bad composition/layout</option>
+                                <option value="Other">Other reason</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Add comment (optional)</label>
+                            <textarea name="comment" class="form-control" rows="3" placeholder="Additional details..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-actions">
+                    <button onclick="closeModal({{ item[0] }})" class="btn btn-outline">
+                        <i class="fas fa-times mr-1"></i>Cancel
+                    </button>
+                    <button onclick="document.getElementById('reject-form-{{ item[0] }}').submit()" 
+                            class="btn btn-danger">
+                        <i class="fas fa-ban mr-1"></i>Confirm Rejection
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
-        // Close modals when clicking backdrop
-        document.querySelectorAll('.dialog-backdrop').forEach(backdrop => {
-            backdrop.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    this.close();
-                }
-            });
+        let activeModal = null;
+        
+        function openRejectModal(approvalId) {
+            // Clone template and customize for this approval ID
+            const template = document.getElementById('rejectModalTemplate').innerHTML;
+            const modalHtml = template.replace(/{{ item\[0\] }}/g, approvalId);
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            activeModal = document.getElementById(`modal-${approvalId}`);
+            activeModal.classList.add('active');
+            
+            // Prevent background scroll
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal(approvalId = null) {
+            if (activeModal) {
+                activeModal.classList.remove('active');
+                setTimeout(() => {
+                    if (activeModal.parentNode) {
+                        activeModal.parentNode.removeChild(activeModal);
+                    }
+                }, 300);
+                activeModal = null;
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        // Close modal when clicking backdrop
+        document.addEventListener('click', function(e) {
+            if (activeModal && e.target === activeModal) {
+                closeModal();
+            }
         });
         
-        // Auto-focus first input in modals
-        document.querySelectorAll('dialog').forEach(dialog => {
-            dialog.addEventListener('click', function() {
-                const input = this.querySelector('input, select, textarea');
-                if (input) input.focus();
-            });
+        // Close modal with escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && activeModal) {
+                closeModal();
+            }
         });
     </script>
 </body>
