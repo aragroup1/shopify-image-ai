@@ -3,15 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title></tool_call>
-We are at the token limit. I'll provide the remaining files in the next response.
-</think>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ImageRelation Dashboard | Shopify AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ BASE_URL }}/dashboard/static/style.css">
@@ -81,7 +72,19 @@ We are at the token limit. I'll provide the remaining files in the next response
                                                 <span class="badge badge-apify mt-1 inline-block">
                                                     <i class="fas fa-camera"></i> Apify Product
                                                 </span>
-                                                {% elif item[2] and "clothing" in item[2].lower() or any(keyword in item[1].lower() for keyword in ['shirt', 'dress', 'pants']) %}
+                                                {% elif item[2] and "clothing" in item[2].lower() or 
+                                                       ('shirt' in item[1].lower() or 
+                                                        'dress' in item[1].lower() or 
+                                                        'pants' in item[1].lower() or
+                                                        'jacket' in item[1].lower() or
+                                                        'hoodie' in item[1].lower() or
+                                                        'sweater' in item[1].lower() or
+                                                        'top' in item[1].lower() or
+                                                        'bottom' in item[1].lower() or
+                                                        'jeans' in item[1].lower() or
+                                                        'blouse' in item[1].lower() or
+                                                        'skirt' in item[1].lower() or
+                                                        'shorts' in item[1].lower()) %}
                                                 <span class="badge badge-success mt-1 inline-block">
                                                     <i class="fas fa-tshirt"></i> Clothing
                                                 </span>
@@ -209,4 +212,91 @@ We are at the token limit. I'll provide the remaining files in the next response
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Reject Images for Product #<span id="modal-product-id"></span></h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="reject-form" method="POST">
+                    <div class="form-group">
+                        <label for="reason" class="form-label">Reason for rejection</label>
+                        <select name="reason" id="reason" class="form-control">
+                            <option value="Poor quality">Poor image quality</option>
+                            <option value="Wrong colors">Incorrect color representation</option>
+                            <option value="Missing lifestyle">Missing lifestyle shot</option>
+                            <option value="Composition issues">Bad composition/layout</option>
+                            <option value="Other">Other reason</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Add comment (optional)</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Additional details..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-actions">
+                <button onclick="closeModal()" class="btn btn-outline">
+                    <i class="fas fa-times mr-1"></i>Cancel
+                </button>
+                <button onclick="submitRejection()" class="btn btn-danger">
+                    <i class="fas fa-ban mr-1"></i>Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let activeModal = null;
+        let currentApprovalId = null;
+        
+        function openRejectModal(approvalId) {
+            currentApprovalId = approvalId;
+            document.getElementById('modal-product-id').textContent = approvalId;
+            
+            const modal = document.getElementById('reject-modal');
+            modal.style.display = 'block';
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+            }, 10);
+            
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('reject-modal');
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+            
+            document.body.style.overflow = 'auto';
+            currentApprovalId = null;
+        }
+        
+        function submitRejection() {
+            if (!currentApprovalId) return;
+            
+            const reason = document.getElementById('reason').value;
+            const form = document.getElementById('reject-form');
+            form.action = `{{ BASE_URL }}/dashboard/reject/${currentApprovalId}`;
+            form.submit();
+        }
+        
+        // Close modal when clicking backdrop
+        document.getElementById('reject-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Close modal with escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
