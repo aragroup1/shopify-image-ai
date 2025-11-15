@@ -6,3 +6,5 @@ replicate==0.24.0
 sqlitedict==2.1.0
 Pillow==10.1.0
 flask==3.0.0
+psutil==5.9.8
+jinja2==3.1.6
