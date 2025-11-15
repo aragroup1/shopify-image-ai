@@ -146,9 +146,17 @@ def async_shopify_verification():
     else:
         logger.warning("⚠️ Shopify service disabled")
 
-# Mount Flask dashboard under /dashboard
-from dashboard import app as dashboard_app
-app.mount("/dashboard", WSGIMiddleware(dashboard_app))
+# ===== CRITICAL FIX: MOVE FLASK MOUNTING TO BOTTOM =====
+# This prevents circular imports and mounting errors
+try:
+    from dashboard import create_dashboard_app
+    
+    # Create and mount the dashboard app
+    dashboard_app = create_dashboard_app()
+    app.mount("/dashboard", WSGIMiddleware(dashboard_app))
+    logger.info("✅ Dashboard mounted successfully at /dashboard")
+except Exception as e:
+    logger.exception(f"🔥 Failed to mount dashboard: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
