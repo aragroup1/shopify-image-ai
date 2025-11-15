@@ -52,6 +52,15 @@ def get_startup_warnings():
     
     return warnings
 
+@app.post("/fetch-all-products")
+async def fetch_all_products(background_tasks: BackgroundTasks):
+    """Manually trigger fetching of all products from Shopify"""
+    if not shopify.enabled:
+        return {"status": "error", "message": "Shopify service disabled"}
+    
+    background_tasks.add_task(process_all_products)
+    return {"status": "started", "message": "Batch processing started - check dashboard in 2-5 minutes"}
+
 @app.get("/")
 async def root():
     """Redirect root to dashboard login"""
