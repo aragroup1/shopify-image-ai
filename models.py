@@ -32,17 +32,17 @@ class ApprovalDB:
                 'INSERT INTO pending_images (product_id, variant_id, original_images, processed_images, status) VALUES (?, ?, ?, ?, ?)',
                 (product_id, variant_id, ','.join(original_images), ','.join(processed_images), 'pending')
             )
-
-    def get_pending_by_product_id(self, product_id):
-    """Check if product already has pending approval"""
-    cur = self.conn.cursor()
-    cur.execute("SELECT id FROM pending_images WHERE product_id = ? AND status = 'pending'", (product_id,))
-    return cur.fetchone() is not None
     
     def get_pending(self):
         cur = self.conn.cursor()
         cur.execute("SELECT * FROM pending_images WHERE status='pending' ORDER BY created_at DESC")
         return cur.fetchall()
+    
+    def get_pending_by_product_id(self, product_id):
+        """Check if product already has pending approval"""
+        cur = self.conn.cursor()
+        cur.execute("SELECT id FROM pending_images WHERE product_id = ? AND status = 'pending'", (product_id,))
+        return cur.fetchone() is not None
     
     def approve(self, approval_id):
         with self.conn:
