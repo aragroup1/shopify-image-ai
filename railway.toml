@@ -4,4 +4,5 @@ builder = "NIXPACKS"
 [deploy]
 startCommand = "uvicorn app:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
-healthcheckTimeout = 120
+healthcheckTimeout = 300
+healthcheckMaxAttempts = 10
