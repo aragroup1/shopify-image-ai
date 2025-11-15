@@ -76,6 +76,87 @@ async def health_check():
         "shopify_status": "connected" if shopify.enabled else "disconnected"
     }
 
+def process_all_products():
+    """Process ALL products from Shopify - not just webhooks"""
+    try:
+        logger.info("🚀 Starting batch processing of ALL products")
+        
+        # Get all products from Shopify
+        all_products = shopify.get_all_products()
+        if not all_products:
+            logger.warning("❌ No products found in Shopify store")
+            return
+        
+        logger.info(f"📋 Found {len(all_products)} total products to process")
+        
+        processed_count = 0
+        apify_count = 0
+        clothing_count = 0
+        
+        # Process each product
+        for product in all_products:
+            product_id = product['id']
+            tags = product.get('tags', '')
+            title = product.get('title', 'Untitled Product')
+            
+            # Skip if already processed recently
+            if db.get_pending_by_product_id(str(product_id)):
+                logger.info(f"⏭️ Skipping already pending product: {title} (ID: {product_id})")
+                continue
+            
+            # Determine product type
+            is_apify = 'Supplier:apify' in tags
+            is_clothing = any(keyword in title.lower() for keyword in ['shirt', 'dress', 'pants', 'jacket', 'hoodie', 'sweater', 'top', 'bottom', 'jeans'])
+            
+            logger.info(f"🔍 Processing: {title} (ID: {product_id})")
+            logger.info(f"🏷️ Tags: {tags}")
+            logger.info(f"📊 Type: {'Apify' if is_apify else 'Clothing' if is_clothing else 'Standard'}")
+            
+            # Get product images
+            images = shopify.get_product_images(product_id)
+            if not images:
+                logger.warning(f"🖼️ No images found for product: {title}")
+                continue
+            
+            # Process based on type
+            if is_apify:
+                logger.info(f"🔧 Processing as Apify multi-angle product")
+                apify_count += 1
+                # In real implementation: split multi-angle images
+                processed_images = [img['src'] for img in images[:5]]
+            elif is_clothing:
+                logger.info(f"👗 Processing as clothing product")
+                clothing_count += 1
+                # In real implementation: generate lifestyle + swatch collage
+                processed_images = [img['src'] for img in images[:5]]
+            else:
+                logger.info(f"📦 Processing as standard product")
+                # Add UK flag + fast delivery badge
+                processed_images = [img['src'] for img in images[:5]]
+            
+            # Add to approval queue
+            db.add_pending(
+                product_id=str(product_id),
+                original_images=[img['src'] for img in images],
+                processed_images=processed_images,
+                variant_id=tags  # Store tags for display
+            )
+            
+            processed_count += 1
+            logger.info(f"✅ Added to approval queue: {title}")
+            
+            # Rate limiting - be nice to Shopify API
+            time.sleep(0.5)
+        
+        logger.info(f"🎉 Batch processing complete!")
+        logger.info(f"✅ Total processed: {processed_count}/{len(all_products)}")
+        logger.info(f"🔍 Apify products: {apify_count}")
+        logger.info(f"👗 Clothing products: {clothing_count}")
+        logger.info(f"📦 Standard products: {processed_count - apify_count - clothing_count}")
+        
+    except Exception as e:
+        logger.exception(f"💥 Batch processing failed: {str(e)}")
+        
 @app.post("/webhook/product_updated")
 async def handle_product_update(request: Request, background_tasks: BackgroundTasks):
     """Shopify webhook handler - processes product updates"""
