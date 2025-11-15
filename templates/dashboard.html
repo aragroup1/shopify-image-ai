@@ -151,19 +151,19 @@
     
     <!-- Reject Modal Template -->
     <div id="rejectModalTemplate" style="display:none;">
-        <div class="modal-backdrop" id="modal-{{ item[0] }}">
+        <div class="modal-backdrop">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3 class="modal-title">Reject Images for Product #{{ item[1] }}</h3>
-                    <button onclick="closeModal({{ item[0] }})" class="text-gray-400 hover:text-gray-600">
+                    <h3 class="modal-title">Reject Images for Product #<span id="modal-product-id"></span></h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form method="POST" action="{{ BASE_URL }}/dashboard/reject/{{ item[0] }}" id="reject-form-{{ item[0] }}">
+                    <form id="reject-form" method="POST">
                         <div class="form-group">
-                            <label for="reason-{{ item[0] }}" class="form-label">Reason for rejection</label>
-                            <select name="reason" id="reason-{{ item[0] }}" class="form-control">
+                            <label for="reason" class="form-label">Reason for rejection</label>
+                            <select name="reason" id="reason" class="form-control">
                                 <option value="Poor quality">Poor image quality</option>
                                 <option value="Wrong colors">Incorrect color representation</option>
                                 <option value="Missing lifestyle">Missing lifestyle shot</option>
@@ -178,11 +178,10 @@
                     </form>
                 </div>
                 <div class="modal-actions">
-                    <button onclick="closeModal({{ item[0] }})" class="btn btn-outline">
+                    <button onclick="closeModal()" class="btn btn-outline">
                         <i class="fas fa-times mr-1"></i>Cancel
                     </button>
-                    <button onclick="document.getElementById('reject-form-{{ item[0] }}').submit()" 
-                            class="btn btn-danger">
+                    <button onclick="submitRejection()" class="btn btn-danger">
                         <i class="fas fa-ban mr-1"></i>Confirm Rejection
                     </button>
                 </div>
@@ -192,43 +191,53 @@
     
     <script>
         let activeModal = null;
+        let currentApprovalId = null;
         
         function openRejectModal(approvalId) {
-            // Clone template and customize for this approval ID
-            const template = document.getElementById('rejectModalTemplate').innerHTML;
-            const modalHtml = template.replace(/{{ item\[0\] }}/g, approvalId);
+            currentApprovalId = approvalId;
+            document.getElementById('modal-product-id').textContent = approvalId;
             
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            activeModal = document.getElementById(`modal-${approvalId}`);
-            activeModal.classList.add('active');
+            const modal = document.querySelector('.modal-backdrop');
+            modal.style.display = 'block';
+            setTimeout(() => {
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+            }, 10);
             
-            // Prevent background scroll
             document.body.style.overflow = 'hidden';
         }
         
-        function closeModal(approvalId = null) {
-            if (activeModal) {
-                activeModal.classList.remove('active');
-                setTimeout(() => {
-                    if (activeModal.parentNode) {
-                        activeModal.parentNode.removeChild(activeModal);
-                    }
-                }, 300);
-                activeModal = null;
-                document.body.style.overflow = 'auto';
-            }
+        function closeModal() {
+            const modal = document.querySelector('.modal-backdrop');
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+            
+            document.body.style.overflow = 'auto';
+            currentApprovalId = null;
+        }
+        
+        function submitRejection() {
+            if (!currentApprovalId) return;
+            
+            const reason = document.getElementById('reason').value;
+            const form = document.getElementById('reject-form');
+            form.action = `${BASE_URL}/dashboard/reject/${currentApprovalId}`;
+            form.submit();
         }
         
         // Close modal when clicking backdrop
-        document.addEventListener('click', function(e) {
-            if (activeModal && e.target === activeModal) {
+        document.querySelector('.modal-backdrop').addEventListener('click', function(e) {
+            if (e.target === this) {
                 closeModal();
             }
         });
         
         // Close modal with escape key
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && activeModal) {
+            if (e.key === 'Escape') {
                 closeModal();
             }
         });
